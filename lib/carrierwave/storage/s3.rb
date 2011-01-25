@@ -134,14 +134,32 @@ module CarrierWave
           connection.get_object_url(bucket, path, Time.now + 60 * 10)
         end
 
+        def loginfo(text)
+          if defined?(Rails)
+            Rails.logger.info(text)
+          end
+        end
+
         def store(file)
           content_type ||= file.content_type # this might cause problems if content type changes between read and upload (unlikely)
-          connection.put_object(bucket, path, file.read,
-            {
-              'x-amz-acl' => access_policy.to_s.gsub('_', '-'),
-              'Content-Type' => content_type
-            }.merge(@uploader.s3_headers)
-          )
+          
+          begin
+            connection.put_object(bucket, path, file.read,
+              {
+                'x-amz-acl' => access_policy.to_s.gsub('_', '-'),
+                'Content-Type' => content_type
+              }.merge(@uploader.s3_headers)
+            )
+          rescue Aws::AwsError => e
+              loginfo("*** Carrierwave[Aws::Exception]: #{e.message} ***")
+              loginfo("*** Carrierwave[Aws::Exception]: AWSError Request ID #{e.request_id} *********")
+              loginfo("*** Carrierwave[Aws::Exception]: #{path} *** : FAIL")
+          rescue Exception => e
+              loginfo("*** Carrierwave[Exception]: #{e.message} ***")
+              loginfo("*** Carrierwave[Exception]: #{path} *** : FAIL")
+          else
+              loginfo("*** Carrierwave: #{path} *** : OK")
+          end
         end
 
         def content_type
