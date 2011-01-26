@@ -135,7 +135,10 @@ module CarrierWave
         end
 
         def store(file)
-          content_type ||= file.content_type # this might cause problems if content type changes between read and upload (unlikely)
+          # NOTE: we force a "sync" in Fog before each "put"
+					connection.sync_clock
+
+					content_type ||= file.content_type # this might cause problems if content type changes between read and upload (unlikely)
           connection.put_object(bucket, path, file.read,
             {
               'x-amz-acl' => access_policy.to_s.gsub('_', '-'),
